@@ -1,0 +1,10 @@
+path: /data/eyewear-pose
+train: images/train
+val: images/val
+test: images/test
+
+names:
+  0: eyewear
+
+kpt_shape: [16, 3]
+flip_idx: [5, 4, 6, 7, 1, 0, 2, 3, 9, 8, 11, 10, 13, 12, 15, 14]

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Create calibrated virtual try-on assets from multi-view eyewear photography." />
+    <title>Eyewear Asset Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Eyewear Asset Lab home">
+        <span class="brand-mark" aria-hidden="true">EA</span>
+        <span>Eyewear Asset Lab</span>
+      </a>
+      <div class="service-state"><span class="state-dot"></span> GPU pipeline</div>
+    </header>
+
+    <main>
+      <section class="workspace" aria-labelledby="workspace-title">
+        <div class="workspace-head">
+          <div>
+            <p class="eyebrow">New VTO asset</p>
+            <h1 id="workspace-title">Capture the frame from every angle</h1>
+            <p>Use consistent lighting and scale. Front, left, and right views are required.</p>
+          </div>
+          <div class="step-count"><span>01</span> / 03</div>
+        </div>
+
+        <form id="generation-form" novalidate>
+          <div class="metadata-grid">
+            <label>Merchant ID<input name="merchant_id" required maxlength="64" autocomplete="organization" /></label>
+            <label>Product SKU<input name="product_sku" required maxlength="96" /></label>
+            <label>Frame width <span>mm</span><input name="frame_width_mm" required type="number" min="90" max="180" step="0.1" value="140" /></label>
+            <label>API key<input id="api-key" type="password" autocomplete="current-password" /></label>
+          </div>
+
+          <div id="upload-grid" class="upload-grid" aria-label="Product view uploads"></div>
+
+          <div id="form-message" class="message" role="alert" aria-live="polite"></div>
+          <div class="form-actions">
+            <p>JPEG, PNG, or WebP · 15 MB per image</p>
+            <button id="generate-button" class="primary-button" type="submit">
+              Generate 3D asset <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="status-panel" aria-labelledby="status-title">
+        <div class="status-head">
+          <div>
+            <p class="eyebrow">Pipeline</p>
+            <h2 id="status-title">Waiting for images</h2>
+          </div>
+          <span id="progress-value">0%</span>
+        </div>
+        <div class="progress-track"><span id="progress-bar"></span></div>
+        <ol id="stage-list" class="stage-list"></ol>
+        <dl id="job-details" class="job-details" hidden>
+          <div><dt>Job</dt><dd id="job-id">—</dd></div>
+          <div><dt>Status</dt><dd id="job-status">—</dd></div>
+        </dl>
+      </aside>
+
+      <section id="review-panel" class="review-panel" aria-labelledby="review-title" hidden>
+        <div class="review-copy">
+          <p class="eyebrow">Review asset</p>
+          <h2 id="review-title">Inspect geometry and materials</h2>
+          <p>Rotate the model and compare its response under each lighting preset before syncing it.</p>
+          <div class="lighting-control">
+            <label for="lighting">Environment lighting</label>
+            <select id="lighting">
+              <option value="neutral">Studio</option>
+              <option value="legacy">Indoor</option>
+            </select>
+          </div>
+          <button id="finalize-button" class="primary-button" type="button">Save and sync asset</button>
+          <p id="finalize-message" class="message" role="status" aria-live="polite"></p>
+        </div>
+        <div class="model-stage">
+          <model-viewer id="asset-viewer" camera-controls touch-action="pan-y" shadow-intensity="1" exposure="1" alt="Generated 3D eyeglass frame"></model-viewer>
+        </div>
+      </section>
+    </main>
+
+    <template id="upload-template">
+      <label class="upload-card">
+        <input type="file" accept="image/jpeg,image/png,image/webp" />
+        <span class="upload-preview" aria-hidden="true"></span>
+        <span class="alignment-guide" aria-hidden="true"><i></i></span>
+        <span class="upload-meta"><strong></strong><small></small></span>
+        <span class="upload-action">Choose image</span>
+      </label>
+    </template>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

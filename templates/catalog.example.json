@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "id": "round-v1",
+      "version": "1.0.0",
+      "family": "round",
+      "mesh": "round-v1/frame.glb",
+      "deformation_map": "round-v1/deformation.json",
+      "nominal_frame_width_mm": 140.0,
+      "nominal_frame_height_mm": 48.0,
+      "nominal_temple_length_mm": 145.0,
+      "semantic_nodes": [
+        "frame",
+        "lens_left",
+        "lens_right",
+        "temple_left",
+        "temple_right",
+        "hardware"
+      ]
+    }
+  ]
+}

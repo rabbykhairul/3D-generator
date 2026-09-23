@@ -1,0 +1,14 @@
+{
+  "name": "eyewear-vto-ui",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "mkdir -p frontend/dist && cp frontend/index.html frontend/dist/index.html && cp frontend/src/styles.css frontend/dist/styles.css && esbuild frontend/src/app.js --bundle --minify --format=esm --outfile=frontend/dist/app.js"
+  },
+  "dependencies": {
+    "@google/model-viewer": "4.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
