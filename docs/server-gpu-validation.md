@@ -55,7 +55,7 @@ DISPATCH_TOKEN=...
 WORKER_TOKEN=...
 ```
 
-Start one worker and verify `/health/live` and `/health/ready` before submitting a job. Before this step can run, M13 must add the selected provider's execution entrypoint and wire persisted job IDs to it; job creation is intentionally not an in-process background task.
+Start one worker and verify `/health/live` and `/health/ready` before submitting a job. Wire the selected provider adapter to the existing authenticated `/v1/worker/jobs/{job_id}/execute` endpoint as described in `docs/serverless-dispatch.md`; job creation is intentionally not an in-process background task.
 
 ## 4. Golden job
 

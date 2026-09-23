@@ -37,7 +37,7 @@ Update this table in the same change that advances a module.
 | M10 | GLB optimization, VTO metadata, and QA | `DONE` | Pinned gltfpack/Meshopt optimization, semantic preservation, GLB budgets, and metadata tests pass. | M09 |
 | M11 | Baked-weight CUDA container | `BLOCKED` | Pinned bake, offline manifest/preflight, template gate, and static checks exist; a full image cannot build until YOLO/CAD artifacts are supplied. | M01 |
 | M12 | GHCR CI/CD | `BLOCKED` | Workflow and Docker definition validate; first push requires the repository plus model variables/secrets and M11 artifacts. | M11 |
-| M13 | End-to-end orchestration and failure recovery | `BLOCKED` | Mock E2E, durable cross-replica inputs, authenticated dispatch/execution, retry, cancellation, and failure persistence pass; production assembly and crash-resume checkpoints depend on M07–M09/provider selection. | M02–M10 |
+| M13 | End-to-end orchestration and failure recovery | `CODE COMPLETE` | Content-addressed chained checkpoints, fresh-worker restoration, invalidation, hard-crash redelivery, dispatch, retry/cancellation, and classified failures pass CPU tests; GPU assembly awaits M07–M09/M16. | M02–M10 |
 | M14 | Merchant web UI and 3D preview | `CODE COMPLETE` | Bundled upload/status/review UI and static/API integration tests pass; browser GPU fixture pending M16. | M02 |
 | M15 | Observability, security, and operations | `BLOCKED` | Tracing, metrics, readiness, shared-key auth, archival, cleanup, and runbook tests pass; merchant-scoped identity/authorization and delivery policy remain undecided. | M13 |
 | M16 | Server GPU qualification | `BLOCKED` | Runbook is ready; execution awaits M06–M13 inputs and a 24 GB+ NVIDIA deployment. | M05–M15 |
@@ -62,7 +62,7 @@ The Docker build may access the internet. GitHub Actions builds the immutable im
 
 ### 4.4 Execution model
 
-Durable job state lives in PostgreSQL with optimistic version checks so status polling and finalization remain correct across serverless replicas. Validated raw and normalized inputs are written to object storage before a job is accepted, and their object keys are persisted with the job. A GPU worker reconstructs its disposable local workspace from those keys, so processing never depends on the HTTP replica's filesystem. The selected provider integration must dispatch a persisted job ID to one pipeline execution per GPU worker; that adapter remains part of blocked M13. GPU concurrency defaults to one. Production scale comes from additional serverless workers, not multiple simultaneous diffusion jobs on one GPU.
+Durable job state lives in PostgreSQL with optimistic version checks so status polling and finalization remain correct across serverless replicas. Validated raw and normalized inputs are written to object storage before a job is accepted, and their object keys are persisted with the job. Each completed stage appends a content-addressed checkpoint record; its artifacts live in object storage. A GPU worker reconstructs its disposable workspace from those keys, so processing never depends on the HTTP replica's filesystem. The selected provider integration dispatches a persisted job ID through the contract in `docs/serverless-dispatch.md`. GPU concurrency defaults to one. Production scale comes from additional serverless workers, not multiple simultaneous diffusion jobs on one GPU.
 
 ### 4.5 Local development
 
@@ -142,6 +142,8 @@ Deliverables: local and R2 implementations behind one interface. Object keys:
 ```text
 assets/{merchant_id}/{product_sku}/{job_id}/
   raw/{view}.{ext}
+  inputs/normalized/{view}.png
+  checkpoints/{stage}/{input_digest}/{implementation_version}/{content_sha256}/{artifact}
   preview/frame_model.glb
   preview/thumbnail_hero.webp
   preview/metadata.json
@@ -210,6 +212,8 @@ Pushes to `main` and manual dispatch build `linux/amd64`, use registry-backed Bu
 
 Each stage writes an immutable result record. Re-entry skips a completed stage only when its input digest and implementation version match. Errors are classified as client input, capacity, transient infrastructure, or internal pipeline failure.
 
+Checkpoint input digests form a dependency chain: a changed stage version or output invalidates every downstream checkpoint. Missing checkpoint objects are recomputed rather than producing a permanent retry loop. Provider redelivery of an interrupted processing state starts a new attempt, restores the latest valid chain from object storage, and continues from the first missing or invalid stage.
+
 ### M14 — UI
 
 Five guided upload slots, client-side validation, accessible progress updates, retry guidance, Three.js or model-viewer preview, lighting presets, and explicit finalization. Front/left/right are mandatory; hero/back are optional in v1.
@@ -276,7 +280,7 @@ Local/CI verification is deliberately CPU-only:
 
 GPU verification follows M16 and is the only path for GPU modules to reach `DONE`.
 
-Latest local verification: 62 CPU-only tests, Ruff, and strict mypy pass. The merchant UI bundle builds, and Docker BuildKit's static definition check reports no warnings. No model checkpoint was downloaded, imported, or executed on the development machine.
+Latest local verification: 70 CPU-only tests, Ruff, and strict mypy pass. The merchant UI bundle builds, and Docker BuildKit's static definition check reports no warnings. No model checkpoint was downloaded, imported, or executed on the development machine.
 
 ## 11. Open dependencies
 

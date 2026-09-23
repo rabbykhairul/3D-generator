@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from eyewear_vto.jobs import ConcurrentJobUpdate, DuplicateIdempotencyKey, Job, JobStatus
+from eyewear_vto.jobs import ConcurrentJobUpdate, DuplicateIdempotencyKey, Job, JobStatus, StageCheckpoint
 from eyewear_vto.sql_jobs import SqlJobRepository
 
 
@@ -59,3 +59,23 @@ def test_sql_repository_enforces_merchant_scoped_idempotency(tmp_path: Path) -> 
                 idempotency_key="request-1",
             )
         )
+
+
+def test_sql_repository_persists_checkpoint_history(tmp_path: Path) -> None:
+    repo = repository(tmp_path)
+    job = Job(merchant_id="merchant-1", product_sku="sku-1", frame_width_mm=140)
+    job.checkpoints.append(
+        StageCheckpoint(
+            stage="segmentation",
+            input_digest="input-digest",
+            implementation_version="1",
+            attempt=1,
+            artifacts={"mask.front": "assets/checkpoint/front.png"},
+            metadata={"score": 0.99},
+        )
+    )
+
+    created = repo.create(job)
+    loaded = repo.get(created.id)
+
+    assert loaded.checkpoints == created.checkpoints

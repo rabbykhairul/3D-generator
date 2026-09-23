@@ -8,6 +8,7 @@ from typing import Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+from pydantic.types import JsonValue
 
 
 class JobStatus(str, Enum):
@@ -91,6 +92,16 @@ class JobInputs(BaseModel):
     normalized: dict[str, str] = Field(default_factory=dict)
 
 
+class StageCheckpoint(BaseModel, frozen=True):
+    stage: str
+    input_digest: str
+    implementation_version: str
+    attempt: int
+    artifacts: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, JsonValue] = Field(default_factory=dict)
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Job(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     merchant_id: str
@@ -105,6 +116,7 @@ class Job(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     error: JobError | None = None
     inputs: JobInputs = Field(default_factory=JobInputs)
+    checkpoints: list[StageCheckpoint] = Field(default_factory=list)
     outputs: JobOutputs = Field(default_factory=JobOutputs)
 
 
@@ -191,6 +203,21 @@ def transition_job(job: Job, target: JobStatus) -> Job:
 def retry_job(job: Job) -> Job:
     if job.status != JobStatus.FAILED:
         raise InvalidJobTransition(f"Cannot retry a {job.status.value} job")
+    job.status = JobStatus.VALIDATING
+    job.progress = PROGRESS_BY_STATUS[JobStatus.VALIDATING]
+    job.attempt += 1
+    job.error = None
+    job.updated_at = datetime.now(timezone.utc)
+    return job
+
+
+def resume_interrupted_job(job: Job) -> Job:
+    resumable = set(PIPELINE_SEQUENCE[PIPELINE_SEQUENCE.index(JobStatus.SEGMENTING) :]) - {
+        JobStatus.READY_FOR_REVIEW,
+        JobStatus.FINALIZED,
+    }
+    if job.status not in resumable:
+        raise InvalidJobTransition(f"Cannot resume a {job.status.value} job")
     job.status = JobStatus.VALIDATING
     job.progress = PROGRESS_BY_STATUS[JobStatus.VALIDATING]
     job.attempt += 1

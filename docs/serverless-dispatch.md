@@ -28,7 +28,7 @@ POST /v1/worker/jobs/{job_id}/execute
 Authorization: Bearer ${WORKER_TOKEN}
 ```
 
-The worker loads job state from PostgreSQL and input keys from R2. It never expects the API replica's filesystem. If a job is no longer `VALIDATING`, the endpoint returns its current representation without starting a duplicate pipeline.
+The worker loads job state from PostgreSQL and input/checkpoint keys from R2. It never expects the API replica's filesystem. Terminal and review-ready jobs return their current representation without starting another pipeline. Provider redelivery of a job left in a processing state after worker loss creates a new attempt and resumes from its latest valid checkpoint chain.
 
 The application accepts an injected `JobExecutor`; production pipeline assembly remains blocked until the real M07 deformation, M08 projection, and M09 composition components are available. The serverless adapter must not be declared production-ready before that executor is installed.
 
@@ -37,7 +37,8 @@ The application accepts an injected `JobExecutor`; production pipeline assembly 
 - Dispatch timeout defaults to 10 seconds and is configured with `DISPATCH_TIMEOUT_SECONDS`.
 - Provider acceptance and GPU execution are separate timeouts. The acceptance request should remain short.
 - GPU concurrency is one per container.
-- A provider retry may safely call the worker endpoint again, but mid-stage crash recovery/checkpoint resumption is not complete. Until M13 adds durable stage outputs, a container loss after processing begins requires an operator-controlled failed-job retry from the beginning.
+- Every completed stage is stored under a content-addressed R2 key and recorded in the PostgreSQL job payload. Mid-stage loss recomputes that stage; completed matching stages are restored.
+- The provider adapter must honor the job ID as its idempotency key and must not intentionally deliver the same active invocation concurrently. PostgreSQL optimistic writes prevent stale workers from overwriting newer state at stage boundaries.
 - Never expose the worker endpoint without the bearer token and a provider/private-network ingress policy.
 
 ## Provider adapter acceptance

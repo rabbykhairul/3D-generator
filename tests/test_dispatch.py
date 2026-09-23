@@ -127,3 +127,29 @@ def test_worker_endpoint_requires_token_and_runs_injected_executor(tmp_path: Pat
     assert unauthorized.status_code == 401
     assert executed.status_code == 200
     assert executor.job_ids == [job.id]
+
+
+def test_worker_redelivery_resumes_interrupted_attempt(tmp_path: Path) -> None:
+    repository = InMemoryJobRepository()
+    job = repository.create(
+        Job(
+            merchant_id="merchant-1",
+            product_sku="sku-1",
+            frame_width_mm=140,
+            status=JobStatus.PROJECTING,
+            progress=55,
+        )
+    )
+    executor = RecordingExecutor(repository)
+    app = create_app(settings(tmp_path, worker_token="worker-secret"), repository, executor=executor)
+
+    with TestClient(app) as client:
+        response = client.post(
+            f"/v1/worker/jobs/{job.id}/execute",
+            headers={"Authorization": "Bearer worker-secret"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "validating"
+    assert response.json()["attempt"] == 2
+    assert executor.job_ids == [job.id]

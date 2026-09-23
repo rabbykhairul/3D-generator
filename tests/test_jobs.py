@@ -9,6 +9,7 @@ from eyewear_vto.jobs import (
     Job,
     JobNotFound,
     JobStatus,
+    resume_interrupted_job,
     retry_job,
     transition_job,
 )
@@ -71,3 +72,15 @@ def test_failed_job_retry_clears_error_and_increments_attempt() -> None:
     assert job.progress == 5
     assert job.attempt == 2
     assert job.error is None
+
+
+def test_interrupted_processing_job_can_be_resumed() -> None:
+    job = make_job()
+    job.status = JobStatus.PROJECTING
+    job.progress = 55
+
+    resume_interrupted_job(job)
+
+    assert job.status == JobStatus.VALIDATING
+    assert job.progress == 5
+    assert job.attempt == 2

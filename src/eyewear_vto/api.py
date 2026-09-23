@@ -20,6 +20,7 @@ from eyewear_vto.jobs import (
     JobNotFound,
     JobRepository,
     JobStatus,
+    resume_interrupted_job,
     retry_job,
     transition_job,
 )
@@ -174,7 +175,18 @@ def execute_job(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="GPU executor is unavailable")
     try:
         job = repository.get(job_id)
-        if job.status != JobStatus.VALIDATING:
+        if job.status in {
+            JobStatus.SEGMENTING,
+            JobStatus.LANDMARKING,
+            JobStatus.DEFORMING,
+            JobStatus.PROJECTING,
+            JobStatus.PAINTING,
+            JobStatus.OPTIMIZING,
+            JobStatus.UPLOADING,
+        }:
+            resume_interrupted_job(job)
+            job = repository.save(job)
+        elif job.status != JobStatus.VALIDATING:
             return job
         return executor.run(job_id)
     except JobNotFound as exc:
