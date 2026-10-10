@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Eyewear component review</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;color:#18242d;background:#edf1f1}
+header{padding:12px 18px;background:#172b39;color:white;display:flex;align-items:center;gap:18px}
+header h1{font-size:19px;margin:0}header span{color:#c8d7de}
+main{display:grid;grid-template-columns:260px minmax(0,1fr) 290px;height:calc(100vh - 56px)}
+aside{background:#fff;overflow:auto;border-right:1px solid #d4dfe1;padding:12px}
+aside:last-child{border-right:0;border-left:1px solid #d4dfe1}input,select,button{font:inherit}
+button{border:1px solid #bccbd0;border-radius:6px;background:white;padding:7px 10px;cursor:pointer}
+button:hover{background:#eef5f6}button.primary{background:#126e6c;color:white;border-color:#126e6c}
+button.danger{color:#a33333}button:disabled{opacity:.5;cursor:default}
+.toolbar{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.queue{display:grid;gap:5px}
+.queue button{text-align:left;display:flex;gap:8px;align-items:center;padding:5px;width:100%;font-size:12px}
+.queue button.active{outline:2px solid #008c91}.queue img{width:48px;height:48px;object-fit:contain;background:#f5f5f5}
+.queue small{display:block;color:#71838b}.stage{overflow:auto;background:#dfe7e7;padding:20px;text-align:center}
+.image-wrap{display:inline-block;position:relative;background:white;box-shadow:0 2px 20px #64798450;vertical-align:top}
+canvas{display:block;cursor:crosshair;touch-action:none}label{display:block;margin:12px 0 4px;font-weight:600}
+select,input[type=search]{width:100%;padding:7px;border:1px solid #b9c8cd;border-radius:5px;background:white}
+.muted{color:#667980;font-size:12px}.status{padding:9px;border-radius:5px;background:#e4f1f0;min-height:34px;margin:8px 0}
+.error{background:#fff0e9;color:#9b3a17}.parts{display:grid;gap:5px}.parts button{text-align:left;width:100%;border-left:5px solid var(--color)}
+.parts button.active{background:#dcf6f3}.pill{font-size:11px;border-radius:10px;padding:2px 6px;background:#e5eeee}
+.hint{line-height:1.45}.row{display:flex;align-items:center;gap:7px}.row input[type=checkbox]{width:auto}
+</style>
+<header><h1>Eyewear component review</h1><span>CPU drafts are suggestions. Only Approve creates training masks.</span><span id="counts"></span></header>
+<main>
+<aside><input id="search" type="search" placeholder="Search product"><label for="filter">Queue</label><select id="filter"><option value="pending">Pending</option><option value="all">All</option><option value="approved">Approved</option><option value="skipped">Skipped</option></select><div class="queue" id="queue"></div></aside>
+<section class="stage"><div class="image-wrap"><canvas id="canvas"></canvas></div></section>
+<aside>
+<strong id="name">Select a photo</strong><div id="metadata" class="muted"></div>
+<label for="view">Photo view</label><select id="view"><option value="">Choose view</option><option>front</option><option>left</option><option>right</option></select>
+<label for="construction">Construction</label><select id="construction"><option value="">Choose construction</option><option>opaque-full-rim</option><option>transparent-full-rim</option><option>thin-metal</option><option>semi-rimless</option><option>rimless</option><option>sports-shield</option></select>
+<label class="row"><input id="absentFrame" type="checkbox"> Confirm frame absent (rimless)</label>
+<div class="toolbar"><button id="draft">Generate CPU draft</button><button id="skip">Skip photo</button></div>
+<label for="part">Draw component</label><select id="part"><option value="lens-left">Lens left</option><option value="lens-right">Lens right</option><option value="front">Outer frame</option><option value="front-support">Front support</option><option value="bridge">Bridge</option><option value="bridge-hardware">Bridge hardware</option><option value="nose-pad-left">Nose pad left</option><option value="nose-pad-right">Nose pad right</option><option value="hinge-left">Hinge left</option><option value="hinge-right">Hinge right</option><option value="temple-left">Temple left</option><option value="temple-right">Temple right</option><option value="lens-mount-left">Lens mount left</option><option value="lens-mount-right">Lens mount right</option></select>
+<div class="toolbar"><button id="draw">Start outline</button><button id="finish">Finish outline</button><button id="undo">Undo point</button><button id="remove" class="danger">Delete selected</button></div>
+<div id="parts" class="parts"></div>
+<label for="zoom">Zoom</label><input id="zoom" type="range" min="0.25" max="3" step="0.05" value="0.8"><span id="zoomText">80%</span>
+<p class="muted hint">Zoom to inspect thin edges. Click to add points; finish to close an outline. Click an existing outline to select it, then drag its points. Keep shadows and arms outside lens and frame masks.</p>
+<div class="toolbar"><button id="save">Save draft</button><button id="approve" class="primary">Approve masks</button></div><div id="status" class="status">Choose a photo to begin.</div>
+</aside></main>
+<script>
+const $=id=>document.getElementById(id), colors={lens:'#ee743c',frame:'#23a373',bridge:'#dfac29','nose-pad':'#238ee6',hinge:'#8b52d1',temple:'#a13fad','lens-mount':'#e0418f'};
+const cls=part=>part.startsWith('lens-')&&!part.startsWith('lens-mount')?'lens':part==='front'||part==='front-support'?'frame':part.startsWith('bridge')?'bridge':part.startsWith('nose-pad')?'nose-pad':part.startsWith('hinge')?'hinge':part.startsWith('temple')?'temple':'lens-mount';
+let items=[],current=null,image=new Image(),polygons=[],active=-1,drawing=false,working=[],drag=null,fit=.8;
+const canvas=$('canvas'),ctx=canvas.getContext('2d');
+function message(value,error=false){$('status').textContent=value;$('status').className='status'+(error?' error':'')}
+async function api(url,body){const r=await fetch(url,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw Error(j.error||r.statusText);return j}
+function filtered(){const q=$('search').value.toLowerCase(),f=$('filter').value;return items.filter(x=>(f==='all'||(f==='pending'?!x.reviewed&&x.review_state!=='skipped':f==='approved'?x.reviewed:x.review_state==='skipped'))&&x.product_id.toLowerCase().includes(q))}
+function queue(){const rows=filtered();$('queue').replaceChildren(...rows.map(x=>{const b=document.createElement('button');b.className=x.photo_id===current?.photo_id?'active':'';const img=document.createElement('img');img.loading='lazy';img.src=x.image_url;const text=document.createElement('div');text.textContent=x.product_id.slice(0,29);const small=document.createElement('small');small.textContent=`${x.view||'view?'} · ${x.reviewed?'approved':x.review_state||'pending'}`;text.append(small);b.append(img,text);b.onclick=()=>openItem(x.photo_id);return b}));}
+async function refresh(){const result=await api('/api/items');items=result.items;$('counts').textContent=`${result.counts.approved||0} approved · ${result.counts.pending||0} pending · ${result.counts.skipped||0} skipped`;queue()}
+function size(){if(!image.naturalWidth)return;canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const z=Number($('zoom').value);canvas.style.width=`${Math.round(canvas.width*z)}px`;canvas.style.height=`${Math.round(canvas.height*z)}px`;$('zoomText').textContent=`${Math.round(z*100)}%`;paint()}
+function paint(){if(!canvas.width)return;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,0,0);polygons.forEach((polygon,i)=>{const pts=polygon.points;if(!pts.length)return;ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();ctx.strokeStyle=colors[cls(polygon.part)];ctx.lineWidth=i===active?5:3;ctx.stroke();ctx.fillStyle=colors[cls(polygon.part)]+'22';ctx.fill();if(i===active){for(const p of pts){ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.stroke()}}});if(working.length){ctx.beginPath();ctx.moveTo(working[0].x,working[0].y);working.slice(1).forEach(p=>ctx.lineTo(p.x,p.y));ctx.strokeStyle=colors[cls($('part').value)];ctx.lineWidth=3;ctx.stroke();for(const p of working){ctx.beginPath();ctx.arc(p.x,p.y,5,0,7);ctx.fillStyle='#fff';ctx.fill();ctx.stroke()}}}
+function partList(){$('parts').replaceChildren(...polygons.map((p,i)=>{const b=document.createElement('button');b.textContent=`${p.part} · ${p.points.length} points`;b.style.setProperty('--color',colors[cls(p.part)]);b.className=i===active?'active':'';b.onclick=()=>{active=i;drawing=false;partList();paint()};return b}))}
+async function openItem(id){try{const result=await api('/api/item/'+encodeURIComponent(id));current=result.item;polygons=structuredClone(result.draft?.polygons||[]);active=-1;drawing=false;working=[];$('name').textContent=current.product_id;$('metadata').textContent=`${current.width} × ${current.height}px · ${current.photo_id}`;$('view').value=result.draft?.view||current.view||'';$('construction').value=result.draft?.construction||current.construction||'';$('absentFrame').checked=(result.draft?.absent||current.absent||[]).includes('frame');image=new Image();image.onload=()=>{fit=Math.min(.8,(document.querySelector('.stage').clientWidth-50)/image.naturalWidth);$('zoom').value=Math.max(.25,fit);size()};image.src=current.image_url;partList();queue();message(current.reviewed?'Approved masks loaded for inspection.':result.draft?'Draft loaded. Check every edge before approval.':'Choose a view, then generate or draw outlines.')}catch(e){message(e.message,true)}}
+function point(event){const rect=canvas.getBoundingClientRect();return{x:(event.clientX-rect.left)*canvas.width/rect.width,y:(event.clientY-rect.top)*canvas.height/rect.height}}
+canvas.addEventListener('pointerdown',event=>{if(!current)return;const p=point(event);if(drawing){working.push(p);paint();return}for(let i=polygons.length-1;i>=0;i--){const j=polygons[i].points.findIndex(q=>Math.hypot(q.x-p.x,q.y-p.y)<12/Number($('zoom').value));if(j>=0){active=i;drag=j;canvas.setPointerCapture(event.pointerId);partList();paint();return}}});
+canvas.addEventListener('pointermove',event=>{if(drag===null||active<0)return;polygons[active].points[drag]=point(event);paint()});
+canvas.addEventListener('pointerup',()=>{drag=null});
+canvas.addEventListener('dblclick',event=>{event.preventDefault();finish()});
+function finish(){if(working.length<3){message('Outline needs at least three points.',true);return}polygons.push({part:$('part').value,points:working});active=polygons.length-1;working=[];drawing=false;partList();paint();message('Outline added. Check its source pixels before approval.')}
+function payload(){return{view:$('view').value,construction:$('construction').value,polygons,absent:$('absentFrame').checked?['frame']:[]}}
+$('draft').onclick=async()=>{if(!current)return;try{message('Generating a CPU suggestion…');const result=await api('/api/draft/'+current.photo_id,{view:$('view').value});polygons=result.polygons;active=-1;working=[];drawing=false;if(result.construction)$('construction').value=result.construction;partList();paint();message(`Suggested ${polygons.length} outlines. ${result.warnings.join(' ')}`)}catch(e){message(e.message,true)}};
+$('draw').onclick=()=>{if(!current)return;working=[];drawing=true;active=-1;partList();paint();message('Click around the visible component, then press Finish outline.')};
+$('finish').onclick=finish;$('undo').onclick=()=>{working.pop();paint()};$('remove').onclick=()=>{if(active<0)return;polygons.splice(active,1);active=-1;partList();paint()};
+$('zoom').oninput=size;$('search').oninput=queue;$('filter').onchange=queue;
+$('save').onclick=async()=>{if(!current)return;try{await api('/api/save-draft/'+current.photo_id,payload());message('Draft saved. It is not a training label.')}catch(e){message(e.message,true)}};
+$('approve').onclick=async()=>{if(!current)return;try{await api('/api/approve/'+current.photo_id,payload());await refresh();message('Approved masks saved to the training dataset.')}catch(e){message(e.message,true)}};
+$('skip').onclick=async()=>{if(!current)return;try{await api('/api/skip/'+current.photo_id,{});await refresh();message('Photo skipped. It will not be used for training.')}catch(e){message(e.message,true)}};
+refresh().then(()=>{const first=filtered()[0];if(first)openItem(first.photo_id)}).catch(e=>message(e.message,true));
+</script></html>

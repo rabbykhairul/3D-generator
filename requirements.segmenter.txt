@@ -1,0 +1,7 @@
+# Optional isolated evaluation environment; not the application's requirements.
+# Python 3.12+; all evaluation explicitly uses device='cpu'.
+glasses-detector==1.0.4
+torch==2.6.0
+torchvision==0.21.0
+numpy==2.5.3
+pillow==11.3.0

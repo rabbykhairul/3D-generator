@@ -1,0 +1,46 @@
+{
+  "raster_size": 384,
+  "threshold_gray_less_than": 215,
+  "baseline": "artifacts/fidelity/baseline-model.glb",
+  "candidates": [
+    {"name": "candidate", "path": "artifacts/fidelity/candidate/model.glb"}
+  ],
+  "views": [
+    {
+      "id": "official-2", "index": 2, "role": "calibration", "temple_state": "open",
+      "path": "data/references/lenskart-la-e13069-c6/official-2.jpg",
+      "sha256": "dcc42729779b06cca015d3bfb5084509719309072102604bf4569e8a63b4435c",
+      "independent_of_saved_project": false,
+      "previously_used_for_geometry_tuning": true,
+      "complete_product_frame": true,
+      "yaw_limit": 89
+    },
+    {
+      "id": "official-1", "index": 1, "role": "withheld", "temple_state": "open",
+      "path": "data/references/lenskart-la-e13069-c6/official-1.jpg",
+      "sha256": "d3b639657e38fb3ea31312f3ab6160acb109c4bb7e6543b0990f7feefa39604a",
+      "independent_of_saved_project": false,
+      "previously_used_for_geometry_tuning": true,
+      "complete_product_frame": true,
+      "yaw_limit": 89
+    },
+    {
+      "id": "official-3", "index": 3, "role": "withheld", "temple_state": "open",
+      "path": "data/references/lenskart-la-e13069-c6/official-3.jpg",
+      "sha256": "f67d708287f777c55b87103a5260d30240c9dfa7b981b4e43dc819a97d84a659",
+      "independent_of_saved_project": false,
+      "previously_used_for_geometry_tuning": true,
+      "complete_product_frame": true,
+      "yaw_limit": 89
+    },
+    {
+      "id": "official-4", "index": 4, "role": "withheld", "temple_state": "open",
+      "path": "data/references/lenskart-la-e13069-c6/official-4.jpg",
+      "sha256": "ab8d0f32054113c85e5e468f7ac2827148ab905a387f54de162a70cc3287ff90",
+      "independent_of_saved_project": false,
+      "previously_used_for_geometry_tuning": true,
+      "complete_product_frame": false,
+      "yaw_limit": 89
+    }
+  ]
+}

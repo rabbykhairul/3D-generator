@@ -1,0 +1,15 @@
+export type Category = 'opaque-full-rim' | 'thin-metal' | 'transparent-full-rim' | 'semi-rimless' | 'rimless' | 'sports-shield';
+export type Point = {x:number;y:number};
+export type PartState='observed'|'inferred'|'uncertain'|'not-applicable'|'not-observed-in-view';
+export type DetectionEvidence={schema_version:1;state:'observed'|'inferred'|'uncertain';method:'geometric-anatomy-audit';review_required:boolean;notes:string[]};
+export type AnatomyReport={schema_version:1;scope:'photo'|'project';status:string;method:string;blocking:boolean;photo_id?:string;view?:string;nodes:{id:string;state:PartState;evidence:{photo_id:string;source:string;approved:boolean;geometry_valid:boolean}[]}[];relationships:{source:string;relation:string;target:string}[];issues:{code:string;part:string;message:string;action:string;blocking:boolean}[];guidance?:string[];limitations:string[]};
+export type Annotation = {photo_id:string;part:string;points:Point[];anchors:Record<string,Point>;anchor_provenance?:Record<string,string>;approved:boolean;source:string;registration?:{source_photo_id:string;source_points:Point[];source_to_front_homography:number[][];method:'inferred-front-plane-registration'}|null;evidence?:DetectionEvidence|null};
+export type Measurement = {value:number;source:'measured'|'published'|'inferred'|'default'|'manual'};
+export type Material = {color:string;roughness:number;metalness:number;opacity:number;lens_color:string;lens_opacity:number};
+export type Photo = {id:string;view:string;role:'fitting'|'validation';url:string;width:number;height:number;warnings:string[];source_url?:string;image_source_url?:string};
+export type MultiviewEvidence = {photo_id:string;view:string;status:'used'|'accepted'|'review'|'skipped';usage?:string;reason?:string;confidence?:number;coverage?:number};
+export type MultiviewReport = {views:MultiviewEvidence[];limitations?:string[]};
+export type Artifact = {job_id:string;revision:number;model_url:string;metadata_url:string;metadata:Record<string,any>};
+export type Project = {id:string;name:string;category:Category;revision:number;created_at:string;updated_at:string;measurements:Record<string,Measurement>;material:Material;annotations:Annotation[];photos:Photo[];notes:string;reconstruction_settings?:{joint_front_fit:boolean};artifact:Artifact|null;stale:boolean};
+export type Job = {id:string;project_id:string;revision:number;status:'queued'|'processing'|'needs-correction'|'completed'|'failed';stage:string;error?:string;details?:any;artifact?:Artifact};
+export type ViewerProps = {project:Project;mode?:'inspect'|'ar';onModeChange?:(mode:'inspect'|'ar')=>void};

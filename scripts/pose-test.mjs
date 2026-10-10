@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import ts from 'typescript';
+const source=await fs.readFile(new URL('../frontend/src/viewer/poseMath.ts',import.meta.url),'utf8');
+const compiled=ts.transpile(source,{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022});
+const {pixelsPerMeter}=await import('data:text/javascript;base64,'+Buffer.from(compiled).toString('base64'));
+const frontal=pixelsPerMeter(126,63,0);
+assert.equal(frontal,2000);
+assert.ok(Math.abs(pixelsPerMeter(126*Math.cos(Math.PI/4),63,Math.PI/4)-frontal)<.00001,'Yaw must not shrink scale twice');
+assert.equal(pixelsPerMeter(126,0,0),0);
+assert.equal(pixelsPerMeter(126,63,0,120),2400);
+assert.ok(Number.isFinite(pixelsPerMeter(20,63,Math.PI/2)));
+console.log('Pose scale checks passed (5 assertions).');

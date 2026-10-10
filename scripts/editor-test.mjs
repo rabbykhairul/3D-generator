@@ -1,0 +1,46 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const base='http://127.0.0.1:5188';
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000}});
+const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+try{
+ let p=await (await context.request.post(base+'/api/samples/synthetic-opaque-full-rim/import')).json();
+ p=await (await context.request.patch(base+'/api/projects/'+p.id,{data:{name:'Editor QA fixture'}})).json();
+ await page.goto(base);await page.getByRole('heading',{name:'Editor QA fixture',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Advanced outline editor',exact:true}).click();
+ await page.getByRole('button',{name:'Brush add',exact:true}).click();
+ const canvas=page.getByRole('img',{name:'Outline editing canvas for front'});
+ const box=await canvas.boundingBox();assert.ok(box);
+ const result=page.waitForResponse(r=>r.url().endsWith('/api/masks/refine'));
+ await page.mouse.click(box.x+box.width*.3,box.y+box.height*.19);
+ assert.equal((await result).status(),200);
+ await page.getByText('Unapproved trace',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await page.waitForResponse(r=>r.url().endsWith('/api/projects/'+p.id)&&r.request().method()==='PATCH');
+ let fresh=await (await context.request.get(base+'/api/projects/'+p.id)).json();
+ assert.equal(fresh.annotations.find(a=>a.part==='front').approved,false);
+ await page.getByRole('button',{name:'Anchor',exact:true}).click();
+ await page.getByRole('button',{name:'bridge',exact:true}).click();
+ await canvas.click({position:{x:box.width*.5,y:box.height*.37}});
+ await page.getByRole('button',{name:'Save & approve photo',exact:true}).click();
+ await page.getByText('At least one outline on this photo is approved and saved.').waitFor();
+ fresh=await (await context.request.get(base+'/api/projects/'+p.id)).json();
+ assert.ok(fresh.annotations.find(a=>a.part==='front').anchors.bridge);
+ await page.screenshot({path:'artifacts/qa-editor-brush.png',fullPage:true});
+ await page.getByRole('tab',{name:/Dimensions/}).click();
+ await page.locator('#measure-frame_width').fill('-2');
+ await page.getByRole('button',{name:'Save dimensions & appearance'}).click();
+ await page.getByRole('alert').filter({hasText:/frame width must be between/}).waitFor();
+ await page.locator('#measure-frame_width').fill('140');
+ await page.locator('#measure-front_curve').fill('0');
+ await page.getByRole('button',{name:'Save dimensions & appearance'}).click();
+ await page.getByText('All changes saved',{exact:true}).waitFor();
+ fresh=await (await context.request.get(base+'/api/projects/'+p.id)).json();
+ assert.equal(fresh.measurements.front_curve.value,0);
+ assert.deepEqual(errors,[]);
+ await fs.writeFile('artifacts/editor-results.json',JSON.stringify({passed:true,project_id:p.id,checks:['brush changes persisted outline','edit invalidates approval','anchor placement saved','approval persisted','invalid measurement rejected','zero front curvature saved'],pageErrors:errors},null,2));
+ console.log('Editor browser checks passed.');
+}catch(e){await page.screenshot({path:'artifacts/qa-editor-failure.png',fullPage:true});await fs.writeFile('artifacts/qa-editor-failure.txt',await page.locator('body').innerText());throw e;}
+finally{await browser.close();}

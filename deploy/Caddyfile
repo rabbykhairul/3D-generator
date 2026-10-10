@@ -1,0 +1,23 @@
+{$APP_DOMAIN} {
+    basic_auth {
+        {$AUTH_USER} {$AUTH_HASH}
+    }
+    encode zstd gzip
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy same-origin
+        Permissions-Policy "camera=(self), microphone=()"
+        X-Frame-Options SAMEORIGIN
+    }
+    request_body {
+        max_size 25MB
+    }
+    handle /api/* {
+        reverse_proxy api:8018
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

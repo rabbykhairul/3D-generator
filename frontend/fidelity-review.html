@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Fidelity comparison — local evidence</title>
+<style>body{font:15px system-ui;background:#eef2f0;color:#19312a;margin:24px}button,select{padding:10px;margin:6px}main{display:grid;grid-template-columns:1fr 1fr;gap:16px}canvas{width:100%;height:480px;background:#f4f6f5}h2{margin:8px}p{max-width:1100px}#result{white-space:pre-wrap}img{max-width:480px}</style></head><body>
+<h1>Same-camera model comparison</h1><p>Baseline and candidate use identical camera and lighting. A thinner trial is an unverified calibration, not a measured reconstruction. This page does not alter any saved project.</p>
+<label>View <select id="angle"><option value="threequarter">Three-quarter</option><option value="side">Side</option><option value="front">Front</option><option value="hinge">Hinge close-up</option><option value="top">Top</option></select></label>
+<label>Surface <select id="surface"><option value="photo">Photo colors</option><option value="clay">Neutral clay</option><option value="silhouette">Silhouette</option></select></label>
+<label>Candidate <select id="variant"><option value="candidate">Geometry correction — original depth</option><option value="thin-trial">2 mm depth trial — unverified</option></select></label>
+<button id="save">Download matching-angle PNG</button><button id="verify">Verify GLB materials & transforms</button><p>Clay and silhouette modes omit lenses to expose the physical rim. Photo mode retains the exported lens materials.</p><main><section><h2>Before</h2><canvas id="before"></canvas></section><section><h2>After / candidate</h2><canvas id="after"></canvas></section></main><pre id="result">Loading…</pre>
+<script type="module" src="/src/fidelityReview.ts"></script></body></html>

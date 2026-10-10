@@ -1,0 +1,53 @@
+name: eyewear
+services:
+  api:
+    image: eyewear-api:${RELEASE_TAG:-local}
+    build:
+      context: .
+      target: api
+    restart: unless-stopped
+    environment:
+      EYEWEAR_DATA_DIR: /data
+      EYEWEAR_START_WORKER: '1'
+      EYEWEAR_ALLOWED_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN}
+    volumes:
+      - eyewear_data:/data
+    init: true
+    stop_grace_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+  web:
+    image: eyewear-web:${RELEASE_TAG:-local}
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+      AUTH_USER: ${AUTH_USER:?Set AUTH_USER}
+      AUTH_HASH: ${AUTH_HASH:?Set AUTH_HASH}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+volumes:
+  eyewear_data:
+  caddy_data:
+  caddy_config:
